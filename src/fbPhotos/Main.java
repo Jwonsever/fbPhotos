@@ -85,6 +85,10 @@ public class Main {
             	list.add(href);
             }
             
+            // Make result dir.
+            File f = new File("./results/");
+	        f.mkdir();
+	        
 			// Go through all the links I have
 			for (int i = 0; i < list.size(); i++) {
 				String s = list.get(i);
@@ -123,7 +127,7 @@ public class Main {
 				System.out.println("Got image src: " + logoSRC);
 				if (logoSRC != null) {
 					URL imageURL = new URL(logoSRC);
-					BufferedImage saveImage = ImageIO.read(imageURL);
+					BufferedImage saveImage = ImageIO.read(imageURL);			        
 					ImageIO.write(saveImage, "png", new File("./results/" + id + ".png"));
 				}
 			}
