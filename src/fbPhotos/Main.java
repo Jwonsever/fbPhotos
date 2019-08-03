@@ -76,6 +76,10 @@ public class Main {
             	String href = link.getAttribute("href");
             	System.out.println("Parsing link element " + href);
 
+            	if (href == null) {
+            		continue;
+            	}
+            	
             	// Only save indexes with a photoId.
             	int ind = href.indexOf("fbid=");
 				if (ind == -1) {
