@@ -7,82 +7,111 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
 
 import javax.imageio.ImageIO;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 //comment the above line and uncomment below line to use Chrome
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 
 public class Main {
 
+	public static final String baseUrl = "https://www.facebook.com/";
+	public static final String photosBaseUrl = "https://www.facebook.com/photos";
+
 	public static void main(String[] args) throws Exception {
 		// declaration and instantiation of objects/variables
-		System.setProperty("webdriver.chrome.driver", "/Users/jwonsever/Downloads/chromedriver");
-		WebDriver driver = new ChromeDriver();
-		try {
-			String baseUrl = "https://www.facebook.com/";
+		System.setProperty("webdriver.chrome.driver", "./bin/chromedriver");
 
-			// launch Fire fox and direct it to the Base URL
+		Map<String, Object> prefs = new HashMap<String, Object>();             
+		prefs.put("profile.default_content_setting_values.notifications", 2);
+		ChromeOptions options = new ChromeOptions();
+		options.setExperimentalOption("prefs", prefs);
+		
+		WebDriver driver = new ChromeDriver(options);
+		try {
+			// launch Chrome and direct it to the Base URL
 			driver.get(baseUrl);
 
-			// get the actual value of the title
-			String actualTitle = driver.getTitle();
-
+			// login
 			WebElement login = driver.findElement(By.id("email"));
 			WebElement pass = driver.findElement(By.id("pass"));
 			WebElement submit = driver.findElement(By.id("loginbutton"));
-			login.sendKeys("3018070241");
-			pass.sendKeys("Up2down7");
+			
+			Scanner myObj = new Scanner(System.in);
+		    System.out.println("Enter Username / Phone Number");
+		    String userName = myObj.nextLine();
+		    
+		    System.out.println("Enter Password");
+		    String pw = myObj.nextLine();
+		    
+			login.sendKeys(userName);
+			pass.sendKeys(pw);
 			submit.click();
 
 			// Load my file
+			driver.get(photosBaseUrl);
 
 			//BufferedReader in = new BufferedReader(new FileReader("/Users/jwonsever/fb/links3.txt"));
-			String fails = "/Users/jwonsever/Documents/workspace/fbPhotos/results/failures.txt";
-			BufferedReader in = new BufferedReader(new FileReader(fails));
+			//String fails = "/Users/jwonsever/Documents/workspace/fbPhotos/results/failures.txt";
+			//BufferedReader in = new BufferedReader(new FileReader(fails));
 
+            // Scroll to the bottom of the page, and let infinite scroll load everything.
+            for (int i = 0; i < 200; i++) {
+                Thread.sleep(500);
+            	((JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body.scrollHeight)");
+            }
+			// Collect all links (with photoId)
+            ArrayList<String> list = new ArrayList<String>();
+            List<WebElement> allLinks = driver.findElements(By.tagName("a"));
+            for (WebElement link : allLinks) {
+            	String href = link.getAttribute("href");
+            	System.out.println("Parsing link element " + href);
 
-			ArrayList<String> list = new ArrayList<String>();
-			String sCurrentLine;
-
-			while ((sCurrentLine = in.readLine()) != null) {
-				list.add(sCurrentLine);
-			}
-			in.close();
-
-			// Go through all the links I have
-
-			for (int i = 0; i < list.size(); i++) {
-
-				// Get my nameId
-				String s = list.get(i);
-				int ind = s.indexOf("fbid=");
-				int endInd = s.indexOf("&", ind);
+            	// Only save indexes with a photoId.
+            	int ind = href.indexOf("fbid=");
+				if (ind == -1) {
+					continue;
+				}
 				
+            	list.add(href);
+            }
+            
+			// Go through all the links I have
+			for (int i = 0; i < list.size(); i++) {
+				String s = list.get(i);
+            	System.out.println("Visiting " + s);
+            	
+				int ind = s.indexOf("fbid=");
+				if (ind == -1) {
+					continue;
+				}
+				
+				int endInd = s.indexOf("&", ind);
 				if (endInd == -1) {
 					endInd = s.length();
 				}
 				
 				String id = s.substring(ind + 5, endInd);
-				id.replace("fbid=", "");
-
-				
-				String sample = "https://www.facebook.com/photo.php?fbid=" + list.get(i) + "&set=t.1381012248&type=3&size=604%2C453";
-				id = "retry" + list.get(i);
-				driver.get(sample);
-
+				id.replace("fbid=", "");				
+				driver.get(s);
 				String logoSRC = null;
-
 				try {
+					// Wait for the render and download.
 		            Thread.sleep(1500);
 					WebElement logo = driver.findElement(By.cssSelector(".spotlight"));
 					logoSRC = logo.getAttribute("src");
 				} catch (Exception e) {
 					try {
-						//Retry, I dont wanna deal
+						//Retry.  Who knows why it failed.
 			            Thread.sleep(5000);
 						WebElement logo = driver.findElement(By.cssSelector(".spotlight"));
 						logoSRC = logo.getAttribute("src");
@@ -91,19 +120,16 @@ public class Main {
 					}
 				}
 
+				System.out.println("Got image src: " + logoSRC);
 				if (logoSRC != null) {
 					URL imageURL = new URL(logoSRC);
 					BufferedImage saveImage = ImageIO.read(imageURL);
-
 					ImageIO.write(saveImage, "png", new File("./results/" + id + ".png"));
 				}
 			}
 
 		} finally {
-			// close Fire fox
 			driver.close();
-
 		}
 	}
-
 }
